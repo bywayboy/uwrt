@@ -1,0 +1,33 @@
+LIBRARY	"uci"
+
+EXPORTS
+	uci_alloc_context
+	uci_free_context
+	uci_perror
+	uci_get_errorstr
+	uci_import
+	uci_export
+	uci_load
+	uci_unload
+	uci_lookup_ptr
+	uci_add_section
+	uci_set
+	uci_add_list
+	uci_del_list
+	uci_reorder_section
+	uci_rename
+	uci_delete
+	uci_save
+	uci_commit
+	uci_list_configs
+	uci_set_savedir
+	uci_set_confdir
+	uci_add_delta_path
+	uci_revert
+	uci_parse_argument
+	uci_set_backend
+	uci_validate_text
+	uci_parse_ptr
+	uci_lookup_next
+	uci_parse_section
+	uci_hash_options
