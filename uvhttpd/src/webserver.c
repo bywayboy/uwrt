@@ -131,7 +131,15 @@ static int webserver_onurl(http_parser* parser, const char *at, size_t length)
 	if (parser->state == 32)
 	{
 		request->_url = memdup(request->buf.pdata, request->buf.size);
-		request->nurl = request->buf.size;
+		request->params = strchr(request->_url, '?');
+		if (NULL == request->params)
+			request->params = strchr(request->_url, '#');
+		request->nurl = request->buf.size; 
+		if (request->params) {
+			request->nparams = request->nurl - (request->params - request->_url);
+			request->nurl = request->buf.size - request->nparams;
+		}
+		
 		request->buf.size = 0;
 	}
 	return 0;
@@ -169,19 +177,49 @@ static int webserver_on_header_value(http_parser* parser, const char *at, size_t
 	}
 	return 0;
 }
+
+/*
+	对URL 进行分析.
+*/
+char * analize_url(webrequest_t * request, uint32_t * code);
+static void webserver_go(webrequest_t * request) {
+	uint32_t code;
+	char * file = analize_url(request, &code);
+}
+
 static int webserver_on_header_complete(http_parser* parser)
 {
+	webconn_t * conn = container_of(parser, webconn_t, parser);
+	webrequest_t * request = conn->request;
+	if ((ULLONG_MAX == parser->content_length || 0 == parser->content_length) && request->_url) {
+		if (parser->upgrade) {
+			//TODO: WebSocket.
+
+			return 0;
+		}
+		conn->request = NULL;
+		webserver_go(request);
+	}
 	return 0;
 }
 static int webserver_on_body(http_parser * parser, const char *at, size_t length)
 {
+	webconn_t * conn = container_of(parser, webconn_t, parser);
+	webrequest_t * request = conn->request;
+
+	conn->request = NULL;
+	webserver_go(request);
 	return 0;
 }
 
 static int webserver_on_status(http_parser * parser, const char *at, size_t length)
 {
+	webconn_t * conn = container_of(parser, webconn_t, parser);
+	webrequest_t * request = conn->request;
+
 	return 0;
 }
+
 int webserver_init(uv_loop_t * loop, webserver_t * server)
 {
 	int ret;

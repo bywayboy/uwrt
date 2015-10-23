@@ -2,7 +2,8 @@
 
 config server
 	option bind		'0.0.0.0'
-	option port		808
+	option port		80
+	option cgi		'/cgi-bin/'
 
 config mime
 	option html		'text/html'

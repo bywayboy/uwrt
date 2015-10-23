@@ -19,7 +19,7 @@ static config_t cfg = {
 #endif
 };
 
-#define UCI_CONFIG_FILE	"/etc/config/uvhttpd"
+#define UCI_CONFIG_FILE	"uvhttpd"
 
 const config_t * config_get(void) {
 	return &cfg;
@@ -38,6 +38,10 @@ static void server_config(struct uci_section * s)
 			break;
 		case 'w':
 			cfg.wwwroot = strdup(o->v.string);
+			break;
+		case 'c':
+			cfg.cgi = strdup(o->v.string);
+			cfg.lcgi = strlen(cfg.cgi);
 			break;
 		}
 	}
@@ -59,7 +63,11 @@ static mime_free(struct lh_entry *e) {
 int config_init(void)
 {
 	struct uci_package * pkg = NULL;
-
+	if (NULL == ctx)
+		ctx = uci_alloc_context();
+#if defined(_WIN32) || defined(_WIN64)
+	uci_set_confdir(ctx, "D:/VC/uwrt/uvhttpd/files/etc/config");
+#endif
 	cfg.mime = lh_kchar_table_new(32, "MIME", mime_free);
 	if (UCI_OK == uci_load(ctx, UCI_CONFIG_FILE, &pkg))
 	{
@@ -78,6 +86,20 @@ int config_init(void)
 			}
 		}
 	}
+	if (NULL == cfg.wwwroot) {
+#if defined(__linux__)
+		cfg.wwwroot = strdup("/wwwroot/");
+#else
+		cfg.wwwroot = strdup("D:\\VC\\uwrt\\wwwroot\\");
+#endif
+	}
+	if (cfg.wwwroot)
+	{
+		cfg.lwwwroot = strlen(cfg.wwwroot);
+		if (cfg.wwwroot[cfg.lwwwroot-1] == '\\' || cfg.wwwroot[cfg.lwwwroot-1] == '//') {
+			cfg.wwwroot[cfg.lwwwroot--] = '\0';
+		}
+	}
 	return 0L;
 }
 
@@ -87,6 +109,8 @@ void config_uninit(void) {
 		lh_table_free(cfg.mime);
 	if (NULL != cfg.wwwroot)
 		free(cfg.wwwroot);
+	if (NULL != cfg.cgi)
+		free(cfg.cgi);
 	cfg.mime = NULL;
-	cfg.wwwroot = NULL;
+	cfg.cgi = cfg.wwwroot = NULL;
 }

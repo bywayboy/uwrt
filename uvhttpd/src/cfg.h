@@ -10,7 +10,8 @@ typedef struct uvconfig config_t;
 struct uvconfig {
 	char bind[36];
 	uint32_t port;
-	char * wwwroot;
+	char * wwwroot, * cgi;
+	uint32_t lwwwroot, lcgi;
 	void * mime;
 };
 

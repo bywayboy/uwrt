@@ -33,6 +33,9 @@
     <ClCompile Include="src\automem.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cfg.h">
@@ -51,6 +54,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\automem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
