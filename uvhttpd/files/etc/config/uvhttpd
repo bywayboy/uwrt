@@ -15,6 +15,7 @@ config mime
 	option png		'image/png'
 	option ico		'image/x-icon'
 	option js		'application/x-javascript'
+	option json		'text/json'
 	option jpeg		'image/jpeg'
 	option zip		'application/zip'
 	option 7z		'application/x-7z-compressed'

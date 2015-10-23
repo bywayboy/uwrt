@@ -12,10 +12,11 @@ enum {
 };
 typedef struct webrequest webrequest_t;
 struct webrequest {
-	int _header_value_start, ref; // private
-	time_t fstamp;					/* 文件时间戳 */
+	int _header_value_start, ref,is_cgi; // private
+	time_t st_mtime;					/* 文件时间戳 */
 	automem_t buf;
 	char * _url, * params;	//_url完整的URL String. params 参数起始位置指针
+	const char *  mime;
 	uint32_t nurl, nparams; //nurl 除掉参数后的长度 nparams 参数长度
 
 	char * file;//文件路径,针对 脚本 它是模块名称.

@@ -3,8 +3,11 @@
 #include <stdint.h>
 #include <uv.h>
 #include <ctype.h>
+#include <time.h>
 #if defined(__linux__)
 
+#else
+#define ltoa(a, b, c)  _ltoa(a, b, c)
 #endif
 #include "automem.h"
 #include "utils.h"
@@ -34,7 +37,7 @@ char * analize_url(webrequest_t * request, uint32_t * code) {
 	struct stat st;
 	const config_t * cfg = config_get();
 	uint32_t i=0, l = request->nurl;
-	char * buf, *p,*bp;
+	char * buf, *p,*bp,* ext = NULL;
 	p = buf = malloc(request->nurl + cfg->lwwwroot + 12);
 
 	memcpy(buf, cfg->wwwroot, cfg->lwwwroot);
@@ -51,6 +54,8 @@ char * analize_url(webrequest_t * request, uint32_t * code) {
 			*p++ = from_hex(request->_url[i + 1]) << 4 | from_hex(request->_url[i + 2]);
 			i += 2;
 			break;
+		case '.':
+			ext = p;
 		default:
 			*p++ = c;
 			break;
@@ -58,6 +63,7 @@ char * analize_url(webrequest_t * request, uint32_t * code) {
 		i++;
 	}
 parse_finish:
+	*p = '\0';
 	if (0 == mstrcmp(cfg->cgi, bp)) {
 		//ÊÇCGI½Å±¾.
 		memmove(buf, bp + cfg->lcgi, l-cfg->lcgi);
@@ -70,12 +76,253 @@ parse_finish:
 	puts(buf);
 	if (p[0] == '\\' || p[0] == '/')p[0] = '\0';
 	puts(buf);
+
 	while (0 == stat(buf, &st))
 	{
 		if (S_ISDIR(st.st_mode)) {
 			strcpy(p, "/index.html");
+			ext = strchr(p, '.');
+			continue;
 		}
+		*code = request->st_mtime == st.st_mtime ? 304 : 200;
+		if (ext) {
+			request->mime = lh_table_lookup(cfg->mime, ext + 1);
+		}
+		return buf;
 	}
 	*code = 404;
 	return buf;
+}
+
+const char * http_statusstr(int code, size_t  * slen)
+{
+	char * sret = "HTTP/1.1 306 Unknown\r\n";
+	*slen = sizeof("HTTP/1.1 306 Unknown\r\n") - 1;
+
+	switch (code)
+	{
+	case 100:
+		sret = ("HTTP/1.1 100 Continue\r\n");
+		*slen = sizeof("HTTP/1.1 100 Continue\r\n") - 1;
+		break;
+	case 101:
+		sret = ("HTTP/1.1 101 Switching Protocols\r\n");
+		*slen = sizeof("HTTP/1.1 101 Switching Protocols\r\n") - 1;
+		break;
+	case 102:
+		sret = ("HTTP/1.1 102 Processing\r\n");
+		*slen = sizeof("HTTP/1.1 102 Processing\r\n") - 1;
+		break;
+	case 200:
+		sret = ("HTTP/1.1 200 OK\r\n");
+		*slen = sizeof("HTTP / 1.1 200 OK\r\n") - 1;
+		break;
+	case 201:
+		sret = ("HTTP/1.1 201 Created\r\n");
+		*slen = sizeof("HTTP/1.1 201 Created\r\n") - 1;
+		break;
+	case 202:
+		sret = ("HTTP/1.1 202 Accepted\r\n");
+		*slen = sizeof("HTTP/1.1 202 Accepted\r\n") - 1;
+		break;
+	case 203:
+		sret = ("HTTP/1.1 203 Non-Authoriative Information\r\n");
+		*slen = sizeof("HTTP/1.1 203 Non-Authoriative Information\r\n") - 1;
+		break;
+	case 204:
+		sret = ("HTTP/1.1 204 No Content\r\n");
+		*slen = sizeof("HTTP/1.1 204 No Content\r\n") - 1;
+		break;
+	case 205:
+		sret = ("HTTP/1.1 205 Reset Content\r\n");
+		*slen = sizeof("HTTP/1.1 205 Reset Content\r\n") - 1;
+		break;
+	case 206:
+		sret = ("HTTP/1.1 206 Partial Content\r\n");
+		*slen = sizeof("HTTP/1.1 206 Partial Content\r\n") - 1;
+		break;
+	case 207:
+		sret = ("HTTP/1.1 207 Multi-Status\r\n");
+		*slen = sizeof("HTTP/1.1 207 Multi-Status\r\n") - 1;
+		break;
+	case 300:
+		sret = ("HTTP/1.1 300 Multiple Choices\r\n");
+		*slen = sizeof("HTTP/1.1 300 Multiple Choices\r\n") - 1;
+		break;
+	case 301:
+		sret = ("HTTP/1.1 301 Moved Permanently\r\n");
+		*slen = sizeof("HTTP/1.1 301 Moved Permanently\r\n") - 1;
+		break;
+	case 302:
+		sret = ("HTTP/1.1 302 Found\r\n");
+		*slen = sizeof("HTTP/1.1 302 Found\r\n") - 1;
+		break;
+	case 303:
+		sret = ("HTTP/1.1 303 See Other\r\n");
+		*slen = sizeof("HTTP/1.1 303 See Other\r\n") - 1;
+		break;
+	case 304:
+		sret = ("HTTP/1.1 304 Not Modified\r\n");
+		*slen = sizeof("HTTP/1.1 304 Not Modified\r\n") - 1;
+		break;
+	case 305:
+		sret = ("HTTP/1.1 305 Use Proxy\r\n");
+		*slen = sizeof("HTTP/1.1 305 Use Proxy\r\n") - 1;
+		break;
+	case 306:
+		sret = ("HTTP/1.1 306 (Unused)\r\n");
+		*slen = sizeof("HTTP/1.1 306 (Unused)\r\n") - 1;
+		break;
+	case 307:
+		sret = ("HTTP/1.1 307 Temporary Redirect\r\n");
+		*slen = sizeof("HTTP/1.1 307 Temporary Redirect\r\n") - 1;
+		break;
+	case 400:
+		sret = ("HTTP/1.1 400 Bad Request\r\n");
+		*slen = sizeof("HTTP/1.1 400 Bad Request\r\n") - 1;
+		break;
+	case 401:
+		sret = ("HTTP/1.1 401 Unauthorized\r\n");
+		*slen = sizeof("HTTP/1.1 401 Unauthorized\r\n") - 1;
+		break;
+	case 402:
+		sret = ("HTTP/1.1 402 Payment Granted\r\n");
+		*slen = sizeof("HTTP/1.1 402 Payment Granted\r\n") - 1;
+		break;
+	case 403:
+		sret = ("HTTP/1.1 403 Forbidden\r\n");
+		*slen = sizeof("HTTP/1.1 403 Forbidden\r\n") - 1;
+		break;
+	case 404:
+		sret = ("HTTP/1.1 404 File Not Found\r\n");
+		*slen = sizeof("HTTP/1.1 404 File Not Found\r\n") - 1;
+		break;
+	case 405:
+		sret = ("HTTP/1.1 405 Method Not Allowed\r\n");
+		*slen = sizeof("HTTP/1.1 405 Method Not Allowed\r\n") - 1;
+		break;
+	case 406:
+		sret = ("HTTP/1.1 406 Not Acceptable\r\n");
+		*slen = sizeof("HTTP/1.1 406 Not Acceptable\r\n") - 1;
+		break;
+	case 407:
+		sret = ("HTTP/1.1 407 Proxy Authentication Required\r\n");
+		*slen = sizeof("HTTP/1.1 407 Proxy Authentication Required\r\n") - 1;
+		break;
+	case 408:
+		sret = ("HTTP/1.1 408 Request Time-out\r\n");
+		*slen = sizeof("HTTP/1.1 408 Request Time-out\r\n") - 1;
+		break;
+	case 409:
+		sret = ("HTTP/1.1 409 Conflict\r\n");
+		*slen = sizeof("HTTP/1.1 409 Conflict\r\n") - 1;
+		break;
+	case 410:
+		sret = ("HTTP/1.1 410 Gone\r\n");
+		*slen = sizeof("HTTP/1.1 410 Gone\r\n") - 1;
+		break;
+	case 411:
+		sret = ("HTTP/1.1 411 Length Required\r\n");
+		*slen = sizeof("HTTP/1.1 411 Length Required\r\n") - 1;
+		break;
+	case 412:
+		sret = ("HTTP/1.1 412 Precondition Failed\r\n");
+		*slen = sizeof("HTTP/1.1 412 Precondition Failed\r\n") - 1;
+		break;
+	case 413:
+		sret = ("HTTP/1.1 413 Request Entity Too Large\r\n");
+		*slen = sizeof("HTTP/1.1 413 Request Entity Too Large\r\n") - 1;
+		break;
+	case 414:
+		sret = ("HTTP/1.1 414 Request-URI Too Large\r\n");
+		*slen = sizeof("HTTP/1.1 414 Request-URI Too Large\r\n") - 1;
+		break;
+	case 415:
+		sret = ("HTTP/1.1 415 Unsupported Media Type\r\n");
+		*slen = sizeof("HTTP/1.1 415 Unsupported Media Type\r\n") - 1;
+		break;
+	case 416:
+		sret = ("HTTP/1.1 416 Requested range not satisfiable\r\n");
+		*slen = sizeof("HTTP/1.1 416 Requested range not satisfiable\r\n") - 1;
+		break;
+	case 417:
+		sret = ("HTTP/1.1 417 Expectation Failed\r\n");
+		*slen = sizeof("HTTP/1.1 417 Expectation Failed\r\n") - 1;
+		break;
+	case 422:
+		sret = ("HTTP/1.1 422 Unprocessable Entity");
+		*slen = sizeof("HTTP/1.1 422 Unprocessable Entity") - 1;
+		break;
+	case 423:
+		sret = ("HTTP/1.1 423 Locked\r\n");
+		*slen = sizeof("HTTP/1.1 423 Locked\r\n") - 1;
+		break;
+	case 424:
+		sret = ("HTTP/1.1 424 Failed Dependency\r\n");
+		*slen = sizeof("HTTP/1.1 424 Failed Dependency\r\n") - 1;
+		break;
+	case 500:
+		sret = ("HTTP/1.1 500 Internal Server Error\r\n");
+		*slen = sizeof("HTTP/1.1 500 Internal Server Error\r\n") - 1;
+		break;
+	case 501:
+		sret = ("HTTP/1.1 501 Not Implemented\r\n");
+		*slen = sizeof("HTTP/1.1 501 Not Implemented\r\n") - 1;
+		break;
+	case 502:
+		sret = ("HTTP/1.1 502 Bad Gateway\r\n");
+		*slen = sizeof("HTTP/1.1 502 Bad Gateway\r\n") - 1;
+		break;
+	case 503:
+		sret = ("HTTP/1.1 503 Service Unavailable\r\n");
+		*slen = sizeof("HTTP/1.1 503 Service Unavailable\r\n") - 1;
+		break;
+	case 504:
+		sret = ("HTTP/1.1 504 Gateway Timeout\r\n");
+		*slen = sizeof("HTTP/1.1 504 Gateway Timeout\r\n") - 1;
+		break;
+	case 505:
+		sret = ("HTTP/1.1 505 HTTP Version Not Supported\r\n");
+		*slen = sizeof("HTTP/1.1 505 HTTP Version Not Supported\r\n") - 1;
+		break;
+	case 507:
+		sret = ("HTTP/1.1 507 Insufficient Storage\r\n");
+		*slen = sizeof("HTTP/1.1 507 Insufficient Storage\r\n") - 1;
+		break;
+	}
+	return sret;
+}
+
+int automem_append_header_date(automem_t * mem) {
+	struct tm tm;
+	char str_tm[64];
+	size_t lstr_tm;
+	time_t server_time = time(NULL);
+	gmtime_s(&tm, &server_time);
+	lstr_tm = strftime(str_tm, 60, "Date: %a, %d %b %Y %H:%M:%S GMT\r\n", &tm);
+	return automem_append_voidp(mem, str_tm, lstr_tm);
+}
+
+
+int automem_init_headers(automem_t * mem, int code) {
+	size_t slen;
+	char * status = http_statusstr(code, &slen);
+	automem_append_voidp(mem, status, slen);
+	automem_append_voidp(mem, "Server: uvhttpd/0.0.1\r\n", sizeof("Server: uvhttpd/0.0.1\r\n") - 1);
+	automem_append_voidp(mem, "Connection: keep-alive\r\n", sizeof("Connection: keep-alive\r\n") - 1);
+	automem_append_header_date(mem);
+
+	return mem->size;
+}
+
+int automem_append_contents(automem_t * mem, void * bytes, int sz) {
+	size_t s;
+	char buf[sizeof("Content-Length: ")+32]="Content-Length: ";
+	ltoa(sz, buf+sizeof("Content-Length: ")-1, 10);
+	s = strlen(buf);
+	strcpy(buf + s, "\r\n\r\n", 4);
+	automem_append_voidp(mem, buf,s+4);
+	automem_append_voidp(mem,bytes, sz);
+	mem->pdata[mem->size] = '\0';
+	return mem->size;
 }

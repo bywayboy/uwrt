@@ -82,6 +82,27 @@ static void webconn_onread(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 	}
 	if (NULL != buf->base) free(buf->base);
 }
+
+static void webconn_after_sendmem(uv_write_t* w, int status) {
+	automem_t mem;
+	webconn_t * conn = container_of((uv_tcp_t*)w->handle, webconn_t, conn);
+	automem_init_by_ptr(&mem, w->data, 100);
+	automem_uninit(&mem);
+	free(w);
+}
+
+int webconn_sendmem(webconn_t * conn, automem_t * mem) {
+	uv_buf_t buf;
+	uv_write_t* w;
+
+	buf = uv_buf_init((char*)mem->pdata, (unsigned int)mem->size);
+	w = (uv_write_t*)malloc(sizeof(uv_write_t));
+	memset(w, 0, sizeof(uv_write_t));
+	w->data = mem->pdata; //带上需要释的数据.
+
+	return uv_write(w, (uv_stream_t *)&conn->conn, &buf, 1, webconn_after_sendmem);
+}
+
 static void webserver_ontimer(uv_timer_t * timer) {
 	
 }
@@ -104,12 +125,10 @@ static void webserver_onconnection(uv_stream_t* stream, int status)
 	}
 }
 static webrequest_t * webrequest_create(webconn_t * conn) {
-	webrequest_t * req = (webrequest_t *)malloc(sizeof(webrequest_t));
+	webrequest_t * req = (webrequest_t *)calloc(1, sizeof(webrequest_t));
 	if (NULL != req) {
 		req->_header_value_start = 0;
-		req->body = NULL;
-		req->fstamp = 0;
-		req->ref = 0;
+		req->mime = "text/html";
 		automem_init(&req->buf, 256);
 	}
 	return req;
@@ -182,9 +201,28 @@ static int webserver_on_header_value(http_parser* parser, const char *at, size_t
 	对URL 进行分析.
 */
 char * analize_url(webrequest_t * request, uint32_t * code);
-static void webserver_go(webrequest_t * request) {
+static void webserver_go(webconn_t * conn, webrequest_t * request) {
 	uint32_t code;
 	char * file = analize_url(request, &code);
+	if (request->is_cgi) {
+
+	}
+	else {
+		automem_t mem;
+		automem_init(&mem, 512);
+		automem_init_headers(&mem, code);
+		switch (code) {
+		case 404:
+			automem_append_contents(&mem, "404 Not Found.",sizeof("404 Not Found.")-1);
+			break;
+		case 302: 
+			break;
+		case 200:
+			break;
+		}
+		webconn_sendmem(conn, &mem);
+	}
+
 }
 
 static int webserver_on_header_complete(http_parser* parser)
@@ -198,7 +236,7 @@ static int webserver_on_header_complete(http_parser* parser)
 			return 0;
 		}
 		conn->request = NULL;
-		webserver_go(request);
+		webserver_go(conn,request);
 	}
 	return 0;
 }
@@ -208,9 +246,10 @@ static int webserver_on_body(http_parser * parser, const char *at, size_t length
 	webrequest_t * request = conn->request;
 
 	conn->request = NULL;
-	webserver_go(request);
+	webserver_go(conn,request);
 	return 0;
 }
+
 
 static int webserver_on_status(http_parser * parser, const char *at, size_t length)
 {
