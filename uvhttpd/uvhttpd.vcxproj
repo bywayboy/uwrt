@@ -23,8 +23,11 @@
     <ClCompile Include="src\cfg.c" />
     <ClCompile Include="src\http_parser.c" />
     <ClCompile Include="src\linkhash.c" />
+    <ClCompile Include="src\strptime.c" />
     <ClCompile Include="src\utils.c" />
     <ClCompile Include="src\uvhttpd.c" />
+    <ClCompile Include="src\webctx.c" />
+    <ClCompile Include="src\webrequest.c" />
     <ClCompile Include="src\webserver.c" />
   </ItemGroup>
   <ItemGroup>
@@ -32,8 +35,11 @@
     <ClInclude Include="src\cfg.h" />
     <ClInclude Include="src\http_parser.h" />
     <ClInclude Include="src\linkhash.h" />
+    <ClInclude Include="src\strptime.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\uvhttpd.h" />
+    <ClInclude Include="src\webctx.h" />
+    <ClInclude Include="src\webrequest.h" />
     <ClInclude Include="src\webserver.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

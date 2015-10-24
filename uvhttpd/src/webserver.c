@@ -8,6 +8,8 @@
 #include "cfg.h"
 #include "webserver.h"
 
+#include "utils.h"
+
 void * memdup(void * src, uint32_t sz) {
 	void * dest = calloc(1, sz +1);
 	memcpy(dest, src, sz);
@@ -133,13 +135,24 @@ static webrequest_t * webrequest_create(webconn_t * conn) {
 	}
 	return req;
 }
+webrequest_t * webrequest_get(webrequest_t * r){r->ref++;return r;}
+webrequest_t * webrequest_put(webrequest_t * r) {
+	r->ref--;
+	if (0 == r->ref) {
+		if (NULL != r->file)free(r->file);
+		automem_uninit(&r->buf);
+		if (NULL != r->_url)free(r->_url);
+		r = NULL;
+	}
+	return r;
+}
 
 static int webserver_onurl(http_parser* parser, const char *at, size_t length)
 {
 	webconn_t * conn = container_of(parser, webconn_t, parser);
 	webrequest_t * request = conn->request;
 	if (NULL == conn->request)
-		request = conn->request = webrequest_create(conn);
+		request = conn->request = webrequest_get(webrequest_create(conn));
 	if (NULL == request && !uv_is_closing((uv_handle_t *)&conn->conn)) {
 		uv_close((uv_handle_t *)&conn->conn, webconn_onclose);
 		return 0;
@@ -188,7 +201,19 @@ static int webserver_on_header_value(http_parser* parser, const char *at, size_t
 		switch (request->buf.pdata[0]) {
 		case 'I':
 		case 'i':
+			if (0 == strcasecmp(request->buf.pdata, "IF-MODIFIED-SINCE")) {
+				char * ifv = (char *)request->buf.pdata + request->_header_value_start, n = 0;
+				struct tm tm;
+				int tot = request->buf.size - request->_header_value_start;
+				// If-Modified-Since:  Tue, 21 Jul 2015 08:43:47 GMT
+				while (tot--) {
 
+					if (ifv[tot] == ' ')n++;
+				}
+				strptime(ifv, n == 4 ? "%a, %d %b %Y %H:%M:%S %Z" : "%a, %d %b %Y %H:%M:%S %z", &tm);
+				tm.tm_isdst = 0;
+				request->st_mtime = mkgmtime(&tm);
+			}
 			break;
 		}
 		request->_header_value_start = 0;
@@ -202,8 +227,9 @@ static int webserver_on_header_value(http_parser* parser, const char *at, size_t
 */
 char * analize_url(webrequest_t * request, uint32_t * code);
 static void webserver_go(webconn_t * conn, webrequest_t * request) {
+	static const char * Last_Modified = "Last-Modified: %a, %d %b %Y %H:%M:%S GMT\r\n";
 	uint32_t code;
-	char * file = analize_url(request, &code);
+	request->file = analize_url(request, &code);
 	if (request->is_cgi) {
 
 	}
@@ -215,14 +241,22 @@ static void webserver_go(webconn_t * conn, webrequest_t * request) {
 		case 404:
 			automem_append_contents(&mem, "404 Not Found.",sizeof("404 Not Found.")-1);
 			break;
-		case 302: 
+		case 304:
+			automem_append_header_date(&mem, Last_Modified, request->st_mtime);
 			break;
 		case 200:
+			automem_append_mime(&mem, request->mime);
+			automem_append_content_length(&mem, request->st_size);
+			automem_append_header_date(&mem, Last_Modified, request->st_mtime);
 			break;
 		}
+		automem_append_voidp(&mem, "\r\n", 2);
 		webconn_sendmem(conn, &mem);
+		if (200 == code) {
+			webcon_writefile(conn, request->file,request->st_size);
+		}
 	}
-
+	webrequest_put(request);
 }
 
 static int webserver_on_header_complete(http_parser* parser)

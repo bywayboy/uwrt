@@ -18,6 +18,7 @@ struct webrequest {
 	char * _url, * params;	//_url完整的URL String. params 参数起始位置指针
 	const char *  mime;
 	uint32_t nurl, nparams; //nurl 除掉参数后的长度 nparams 参数长度
+	size_t st_size;
 
 	char * file;//文件路径,针对 脚本 它是模块名称.
 
@@ -25,6 +26,9 @@ struct webrequest {
 //	wsFrame * frame; // WebSocket 协议有效! 数据帧
 
 };
+
+
+
 struct webconn{
 	uv_tcp_t conn;
 	webserver_t * server;
