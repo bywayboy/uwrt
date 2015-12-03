@@ -20,9 +20,9 @@ struct webrequest {
 	uint32_t nurl, nparams; //nurl 除掉参数后的长度 nparams 参数长度
 	size_t st_size;
 
-	char * file;//文件路径,针对 脚本 它是模块名称.
-
-	char * body; // body 如果有值，则指向 buf.
+	char * file;	//文件路径,针对 脚本 它是模块名称.
+	webconn_t * conn;	//关联的连接.
+	char * body;	// body 如果有值，则指向 buf.
 //	wsFrame * frame; // WebSocket 协议有效! 数据帧
 
 };
@@ -49,6 +49,8 @@ struct webserver {
 
 webconn_t * webconn_get(webconn_t * c);
 webconn_t * webconn_put(webconn_t * c);
+webrequest_t * webrequest_get(webrequest_t * r);
+webrequest_t * webrequest_put(webrequest_t * r);
 
 int webserver_init(uv_loop_t * loop, webserver_t * server);
 void webserver_uninit(webserver_t * server);

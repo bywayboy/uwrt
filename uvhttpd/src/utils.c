@@ -49,7 +49,6 @@ int mstrcmp(char * a, char * b) {
 }
 
 char * analize_url(webrequest_t * request, uint32_t * code) {
-	automem_t mem;
 	struct stat st;
 	const config_t * cfg = config_get();
 	uint32_t i=0, l = request->nurl;
@@ -85,6 +84,7 @@ parse_finish:
 		memmove(buf, bp + cfg->lcgi, l-cfg->lcgi);
 		buf[l - cfg->lcgi] = '\0';
 		*code = 600; // is script;
+		request->is_cgi = 1;
 		return request->file = buf;
 	}
 	*p = '\0';
@@ -110,7 +110,7 @@ parse_finish:
 		return buf;
 	}
 	*code = 404;
-	return buf;
+	return request->file = buf;
 }
 
 const char * http_statusstr(int code, size_t  * slen)
@@ -429,4 +429,24 @@ int webcon_writefile(webconn_t * conn, const char * file, size_t st_size) {
 	}
 	free(wf);
 	return -1;
+}
+
+void lua_register_class(lua_State * L, const luaL_Reg * methods, const char * name, lua_CFunction has_index)
+{
+	luaL_newmetatable(L, name);
+	luaL_setfuncs(L, methods, 0);
+
+	lua_pushliteral(L, "__index");
+	if (NULL == has_index)
+		lua_pushvalue(L, -2);
+	else
+		lua_pushcfunction(L, has_index);
+
+	lua_settable(L, -3);
+
+	lua_pushliteral(L, "__metatable");
+	lua_pushliteral(L, "you're not allowed to get this metatable");
+	lua_settable(L, -3);
+
+	lua_pop(L, 1);
 }

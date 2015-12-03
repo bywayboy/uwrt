@@ -36,9 +36,11 @@ static void server_config(struct uci_section * s)
 		case 'p':
 			cfg.port = strtoul(o->v.string, NULL, 10);
 			break;
+#if defined(__linux__)
 		case 'w':
 			cfg.wwwroot = strdup(o->v.string);
 			break;
+#endif
 		case 'c':
 			cfg.cgi = strdup(o->v.string);
 			cfg.lcgi = strlen(cfg.cgi);

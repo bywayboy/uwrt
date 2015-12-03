@@ -7,6 +7,7 @@
 
 #include "cfg.h"
 #include "webserver.h"
+#include "webrequest.h"
 
 #include "utils.h"
 
@@ -229,9 +230,9 @@ char * analize_url(webrequest_t * request, uint32_t * code);
 static void webserver_go(webconn_t * conn, webrequest_t * request) {
 	static const char * Last_Modified = "Last-Modified: %a, %d %b %Y %H:%M:%S GMT\r\n";
 	uint32_t code;
-	request->file = analize_url(request, &code);
+	analize_url(request, &code);
 	if (request->is_cgi) {
-
+		webrequest_push(request, conn);
 	}
 	else {
 		automem_t mem;

@@ -1,6 +1,13 @@
 #ifndef _UVHTTPD_UTIL_H
 #define _UVHTTPD_UTIL_H
 
+
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+
+void lua_register_class(lua_State * L, const luaL_Reg * methods, const char * name, lua_CFunction has_index);
+
 int automem_append_header_date(automem_t * mem, const char * fmt, time_t t);
 /*
 	HTTP status Header.

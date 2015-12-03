@@ -4,6 +4,8 @@ config server
 	option bind		'0.0.0.0'
 	option port		80
 	option cgi		'/cgi-bin/'
+	option wwwroot	''
+	option tls		0
 
 config mime
 	option html		'text/html'
